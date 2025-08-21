@@ -36,4 +36,9 @@ class ProductVariation extends Model
     {
         return $this->hasMany(CartItem::class, 'variation_id');
     }
+
+    public function image()
+    {
+        return $this->hasOne(ProductVariationImage::class, 'variation_id');
+    }
 }

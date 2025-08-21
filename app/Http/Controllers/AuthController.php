@@ -25,7 +25,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-            return redirect()->intended('/users')->with('success', 'Logged in successfully.');
+            return redirect()->intended('/admin')->with('success', 'Logged in successfully.');
         }
 
         return back()->withErrors([
@@ -60,7 +60,7 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('users.index')->with('success', 'User registered and logged in successfully.');
+        return redirect()->route('admin.index')->with('success', 'User registered and logged in successfully.');
     }
 
     public function logout(Request $request)

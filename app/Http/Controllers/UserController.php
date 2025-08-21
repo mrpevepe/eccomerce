@@ -7,15 +7,11 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    // show users na pagina admin list
     public function index()
     {
         $users = User::all();
-        return view('users.index', compact('users'));
+        return view('admin.index', compact('users'));
     }
 
-    public function destroy(User $user)
-    {
-        $user->delete();
-        return redirect()->route('users.index')->with('success', 'User deleted successfully.');
-    }
 }

@@ -2,6 +2,6 @@
 @section('title', 'Home Sitezudo')
 @section('content')
 
-<h1 class="red">adbcdasda</h1>
+<h1 class="red">Pagina inicial</h1>
 
 @endsection

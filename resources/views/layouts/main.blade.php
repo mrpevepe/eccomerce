@@ -17,7 +17,7 @@
         <header>
             <nav class="navbar navbar-expand-sm navbar-light">
                 <a href="/" class="navbar-brand">
-                    <img src="/img/logo.png" alt="logo">
+                    <img src="/img/logo.webp" alt="logo">
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -41,7 +41,7 @@
                         @endif
                         @if (Auth::check() && Auth::user()->role === 'admin')
                             <li class="nav-item">
-                                <a href="{{ route('users.index') }}" class="nav-link">Painel Admin</a>
+                                <a href="{{ route('admin.index') }}" class="nav-link">Painel Admin</a>
                             </li>
                         @endif
                     </ul>
