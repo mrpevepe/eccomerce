@@ -52,112 +52,120 @@
             @php
                 $mainImage = $product->images->where('is_main', true)->first();
             @endphp
-            @if ($mainImage)
-                <div>
-                    <img src="{{ asset('storage/' . $mainImage->path) }}" width="100" alt="Main Image">
-                    <label>
-                        <input type="checkbox" name="delete_images[]" value="{{ $mainImage->id }}"> Deletar
-                    </label>
-                </div>
+            @if($mainImage && Storage::disk('public')->exists($mainImage->path))
+                <img src="{{ asset('storage/' . $mainImage->path) }}" width="100" alt="Main Image">
+                <label>
+                    <input type="checkbox" name="delete_images[]" value="{{ $mainImage->id }}"> Delete Main Image
+                </label>
             @endif
         @endif
         <div>
-            <label for="main_image">Adicionar Imagem Principal:</label>
+            <label for="main_image">Nova Imagem Principal:</label>
             <input type="file" name="main_image" id="main_image" accept="image/*">
-            <div id="main_image_preview"></div>
+            <div class="main_image_preview"></div>
         </div>
 
-        <h3>Imagens Adicionais (Até 3)</h3>
+        <h3>Imagens Adicionais (Máximo 3)</h3>
         @if(isset($product))
-            <div>
-                <h4>Imagens Adicionais Existentes</h4>
-                @foreach ($product->images->where('is_main', false) as $image)
-                    <div>
-                        <img src="{{ asset('storage/' . $image->path) }}" width="100" alt="Additional Image">
-                        <label>
-                            <input type="checkbox" name="delete_images[]" value="{{ $image->id }}"> Delete
-                        </label>
-                    </div>
-                @endforeach
-            </div>
+            @foreach($product->images->where('is_main', false) as $image)
+                @if(Storage::disk('public')->exists($image->path))
+                    <img src="{{ asset('storage/' . $image->path) }}" width="100" alt="Additional Image">
+                    <label>
+                        <input type="checkbox" name="delete_images[]" value="{{ $image->id }}"> Delete Image
+                    </label>
+                @endif
+            @endforeach
         @endif
         <div>
-            <label for="additional_images">Imagens Adicionais (Maximo 3 total):</label>
+            <label for="additional_images">Novas Imagens Adicionais:</label>
             <input type="file" name="additional_images[]" id="additional_images" accept="image/*" multiple>
-            <div id="additional_images_preview"></div>
+            <div class="additional_images_preview"></div>
         </div>
 
         <h3>Variações</h3>
         <div id="variations">
             @if(isset($product) && $product->variations)
-                @foreach($product->variations as $index => $variation)
+                @foreach ($product->variations as $index => $variation)
                     <div class="variation">
-                        <input type="text" name="variations[{{ $index }}][name]" value="{{ $variation->name }}" placeholder="Variation Name (e.g., Size)" required>
-                        <input type="text" name="variations[{{ $index }}][value]" value="{{ $variation->value }}" placeholder="Value (e.g., Medium)" required>
-                        <input type="number" name="variations[{{ $index }}][additional_price]" step="0.01" value="{{ $variation->additional_price }}" placeholder="Additional Price" required>
-                        <input type="number" name="variations[{{ $index }}][stock_quantity]" value="{{ $variation->stock_quantity }}" placeholder="Stock Quantity" required>
+                        <input type="hidden" name="variations[{{ $index }}][id]" value="{{ $variation->id }}">
+                        <input type="text" name="variations[{{ $index }}][name]" value="{{ $variation->name }}" required>
+                        <input type="text" name="variations[{{ $index }}][value]" value="{{ $variation->value }}" required>
+                        <input type="number" name="variations[{{ $index }}][additional_price]" step="0.01" value="{{ $variation->additional_price }}" required>
+                        <input type="number" name="variations[{{ $index }}][stock_quantity]" value="{{ $variation->stock_quantity }}" required>
                         <div>
-                            <label>Imagem Variação:</label>
+                            <label>Variation Image:</label>
                             @if ($variation->image)
-                                <img src="{{ asset('storage/' . $variation->image->path) }}" width="100" alt="Variation Image">
+                                <img src="{{ asset('storage/' . $variation->image->path) }}" width="100" alt="Variation Image" class="variation_image_preview_{{ $index }}">
                                 <label>
-                                    <input type="checkbox" name="delete_variation_images[]" value="{{ $variation->image->id }}"> Deletar Imagem
+                                    <input type="checkbox" name="delete_variation_images[]" value="{{ $variation->image->id }}"> Delete Image
                                 </label>
                             @endif
                             <input type="file" name="variations[{{ $index }}][image]" id="variation_image_{{ $index }}" accept="image/*">
-                            <div class="variation_image_preview"></div>
+                            <div class="variation_image_preview_{{ $index }}"></div>
                         </div>
-                        <button type="button" onclick="this.parentElement.remove()">Remover Variação</button>
+                        <button type="button" onclick="this.parentElement.remove()">Remove Variation</button>
                     </div>
                 @endforeach
             @endif
         </div>
         <button type="button" onclick="addVariation()">Adicionar Variação</button>
 
-        <button type="submit">{{ isset($product) ? 'Editar Produto' : 'Cadastrar Produto' }}</button>
-        <button type="button" onclick="history.back()">Voltar</button>
+        <button type="submit">Salvar</button>
     </form>
 
+    <style>
+        .variation {
+            margin-bottom: 20px;
+        }
+        [class^="variation_image_preview_"] {
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        .additional_images_preview img {
+            display: inline-block;
+            margin-right: 10px;
+            margin-top: 5px;
+            vertical-align: middle;
+        }
+    </style>
+
     <script>
-        const maxAdditionalImages = 3;
-
-        function addPreviewListener(inputId, previewId) {
+        function addPreviewListener(inputId, previewClass) {
             const input = document.getElementById(inputId);
-            const preview = document.getElementById(previewId) || document.querySelector(`[class="${previewId}"]`);
-            if (!input || !preview) return;
-
-            input.addEventListener('change', function(event) {
-                const files = event.target.files;
-                preview.innerHTML = '';
-
-                // Display previews for additional images without enforcing a limit here
-                if (inputId === 'additional_images') {
-                    for (let i = 0; i < files.length; i++) {
-                        const file = files[i];
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            const img = document.createElement('img');
-                            img.src = e.target.result;
-                            img.width = 100;
-                            preview.appendChild(img);
-                        };
-                        reader.readAsDataURL(file);
+            const preview = document.querySelector(`.${previewClass}`);
+            if (input && preview) {
+                input.addEventListener('change', function(e) {
+                    preview.innerHTML = ''; // Limpa preview anterior
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                        // todas aditional imagess
+                        if (inputId === 'additional_images') {
+                            Array.from(files).forEach(file => {
+                                const reader = new FileReader();
+                                reader.onload = function(e) {
+                                    const img = document.createElement('img');
+                                    img.src = e.target.result;
+                                    img.width = 100;
+                                    preview.appendChild(img);
+                                };
+                                reader.readAsDataURL(file);
+                            });
+                        } else {
+                            // mostra so 1 image
+                            const file = files[0];
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                const img = document.createElement('img');
+                                img.src = e.target.result;
+                                img.width = 100;
+                                preview.appendChild(img);
+                            };
+                            reader.readAsDataURL(file);
+                        }
                     }
-                } else {
-                    // For main and variation images, handle individually
-                    if (files.length > 0) {
-                        const file = files[0];
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            const img = document.createElement('img');
-                            img.src = e.target.result;
-                            img.width = 100;
-                            preview.appendChild(img);
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                }
-            });
+                });
+            }
         }
 
         function addVariation() {
@@ -172,12 +180,12 @@
                 <div>
                     <label>Variation Image:</label>
                     <input type="file" name="variations[${index}][image]" id="variation_image_${index}" accept="image/*">
-                    <div class="variation_image_preview"></div>
+                    <div class="variation_image_preview_${index}"></div>
                 </div>
                 <button type="button" onclick="this.parentElement.remove()">Remove Variation</button>
             `;
             document.getElementById('variations').appendChild(variationDiv);
-            addPreviewListener(`variation_image_${index}`, `variation_image_preview`);
+            addPreviewListener(`variation_image_${index}`, `variation_image_preview_${index}`);
         }
 
         // Initialize previews on page load
@@ -191,7 +199,7 @@
             // Variation images preview
             @if(isset($product) && $product->variations)
                 @foreach($product->variations as $index => $variation)
-                    addPreviewListener('variation_image_{{ $index }}', 'variation_image_preview');
+                    addPreviewListener('variation_image_{{ $index }}', 'variation_image_preview_{{ $index }}');
                 @endforeach
             @endif
         });

@@ -51,7 +51,6 @@ class ProductController extends Controller
             'status' => $request->status,
         ]);
 
-        // Handle main image
         if ($request->hasFile('main_image')) {
             $path = $request->file('main_image')->store('products', 'public');
             ProductImage::create([
@@ -61,7 +60,6 @@ class ProductController extends Controller
             ]);
         }
 
-        // Handle additional images (up to 3)
         if ($request->hasFile('additional_images')) {
             foreach ($request->file('additional_images') as $image) {
                 if ($image) {
@@ -75,7 +73,6 @@ class ProductController extends Controller
             }
         }
 
-        // Handle variations and their images
         if ($request->has('variations')) {
             foreach ($request->variations as $index => $variationData) {
                 $variation = ProductVariation::create([
@@ -139,7 +136,6 @@ class ProductController extends Controller
             'status' => $request->status,
         ]);
 
-        // Handle product image deletions
         if ($request->has('delete_images')) {
             foreach ($request->delete_images as $imageId) {
                 $image = ProductImage::findOrFail($imageId);
@@ -148,7 +144,6 @@ class ProductController extends Controller
             }
         }
 
-        // Handle new main image
         if ($request->hasFile('main_image')) {
             $existingMain = $product->images()->where('is_main', true)->first();
             if ($existingMain) {
@@ -163,7 +158,6 @@ class ProductController extends Controller
             ]);
         }
 
-        // Handle additional images
         if ($request->has('additional_images')) {
             $currentAdditionalCount = $product->images()->where('is_main', false)->count();
             $newAdditionalImages = array_filter($request->file('additional_images') ?? [], function($file) {
@@ -182,7 +176,6 @@ class ProductController extends Controller
             }
         }
 
-        // Handle variation image deletions
         if ($request->has('delete_variation_images')) {
             foreach ($request->delete_variation_images as $imageId) {
                 $image = ProductVariationImage::findOrFail($imageId);
@@ -191,19 +184,45 @@ class ProductController extends Controller
             }
         }
 
-        // Handle variations
         if ($request->has('variations')) {
-            $product->variations()->delete();
+            $sentVariationIds = collect($request->variations)
+                ->filter(fn($v) => isset($v['id']))
+                ->pluck('id')
+                ->all();
+
+            $variationsToDelete = $product->variations()->whereNotIn('id', $sentVariationIds)->get();
+            foreach ($variationsToDelete as $variationToDelete) {
+                if ($variationToDelete->image) {
+                    Storage::disk('public')->delete($variationToDelete->image->path);
+                    $variationToDelete->image->delete();
+                }
+                $variationToDelete->delete();
+            }
+
             foreach ($request->variations as $index => $variationData) {
-                $variation = ProductVariation::create([
-                    'product_id' => $product->id,
-                    'name' => $variationData['name'],
-                    'value' => $variationData['value'],
-                    'additional_price' => $variationData['additional_price'],
-                    'stock_quantity' => $variationData['stock_quantity'],
-                ]);
+                if (isset($variationData['id'])) {
+                    $variation = ProductVariation::findOrFail($variationData['id']);
+                    $variation->update([
+                        'name' => $variationData['name'],
+                        'value' => $variationData['value'],
+                        'additional_price' => $variationData['additional_price'],
+                        'stock_quantity' => $variationData['stock_quantity'],
+                    ]);
+                } else {
+                    $variation = ProductVariation::create([
+                        'product_id' => $product->id,
+                        'name' => $variationData['name'],
+                        'value' => $variationData['value'],
+                        'additional_price' => $variationData['additional_price'],
+                        'stock_quantity' => $variationData['stock_quantity'],
+                    ]);
+                }
 
                 if ($request->hasFile("variations.$index.image")) {
+                    if ($variation->image) {
+                        Storage::disk('public')->delete($variation->image->path);
+                        $variation->image->delete();
+                    }
                     $path = $request->file("variations.$index.image")->store('products', 'public');
                     ProductVariationImage::create([
                         'variation_id' => $variation->id,
@@ -257,5 +276,18 @@ class ProductController extends Controller
         }
 
         return redirect()->route('admin.products.index')->with('success', 'Stock updated successfully.');
+    }
+
+    public function deactivate($id)
+    {
+        $product = Product::findOrFail($id);
+        $product->update(['status' => 'inactive']);
+        return redirect()->route('admin.products.index')->with('success', 'Product deactivated successfully.');
+    }
+
+    public function showVariations($id)
+    {
+        $product = Product::with('variations')->findOrFail($id);
+        return view('admin.products.variations', compact('product'));
     }
 }

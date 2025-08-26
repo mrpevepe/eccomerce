@@ -40,11 +40,13 @@
                     <td>
                         <a href="{{ route('admin.products.edit', $product->id) }}"><button>Editar</button></a>
                         <a href="{{ route('admin.products.stock', $product->id) }}"><button>Estoque</button></a>
-                        <form action="{{ route('admin.products.destroy', $product->id) }}" method="POST" style="display:inline;">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
-                        </form>
+                        @if ($product->status === 'active')
+                            <form action="{{ route('admin.products.deactivate', $product->id) }}" method="POST" style="display:inline;">
+                                @csrf
+                                <button type="submit" onclick="return confirm('Are you sure?')">Desativar</button>
+                            </form>
+                        @endif
+                        <a href="{{ route('admin.products.variations', $product->id) }}"><button>Ver Variações</button></a>
                     </td>
                 </tr>
             @endforeach
